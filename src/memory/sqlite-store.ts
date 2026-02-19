@@ -30,8 +30,8 @@ export class SqliteMemoryStore implements IMemoryStore {
   saveRun(run: RunContext): void {
     this.db
       .prepare(
-        `INSERT OR REPLACE INTO runs (run_id, goal, target, persona, timestamp, status, meta)
-         VALUES (@runId, @goal, @target, @persona, @timestamp, @status, @meta)`,
+        `INSERT OR REPLACE INTO runs (run_id, goal, target, persona, timestamp, ended_at, status, meta)
+         VALUES (@runId, @goal, @target, @persona, @timestamp, @endedAt, @status, @meta)`,
       )
       .run({
         runId: run.runId,
@@ -39,6 +39,7 @@ export class SqliteMemoryStore implements IMemoryStore {
         target: run.target,
         persona: run.persona ?? null,
         timestamp: run.timestamp,
+        endedAt: run.endedAt ?? null,
         status: run.status,
         meta: run.meta ? JSON.stringify(run.meta) : null,
       })
@@ -46,8 +47,8 @@ export class SqliteMemoryStore implements IMemoryStore {
 
   updateRunStatus(runId: string, status: RunStatus): void {
     this.db
-      .prepare(`UPDATE runs SET status = ? WHERE run_id = ?`)
-      .run(status, runId)
+      .prepare(`UPDATE runs SET status = ?, ended_at = ? WHERE run_id = ?`)
+      .run(status, new Date().toISOString(), runId)
   }
 
   getRun(runId: string): RunContext | undefined {
@@ -200,6 +201,7 @@ export class SqliteMemoryStore implements IMemoryStore {
       target: row['target'] as string,
       persona: row['persona'] as string | undefined,
       timestamp: row['timestamp'] as string,
+      endedAt: row['ended_at'] as string | undefined,
       status: row['status'] as RunStatus,
       meta: row['meta'] ? JSON.parse(row['meta'] as string) : undefined,
     }

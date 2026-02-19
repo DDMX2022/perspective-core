@@ -5,8 +5,8 @@ import type {
   PolicyInstruction,
   ITelemetryCollector,
   ExecutionResult,
-  ErrorCategory,
 } from '../../types/index.js'
+import { defaultClassifier } from '../../memory/index.js'
 
 /**
  * OpenClawAdapter
@@ -62,7 +62,7 @@ export class OpenClawAdapter implements IExecutionAdapter {
         const line = data.toString().trim()
         if (!line) return
 
-        const { signature, category } = this.classifyError(line)
+        const { signature, category } = defaultClassifier.classify(line, run.runId)
         errors.push({ signature, category, raw: line })
 
         telemetry.capture({
@@ -96,8 +96,9 @@ export class OpenClawAdapter implements IExecutionAdapter {
 
       proc.on('error', (err: Error) => {
         const message = err.message
+        const { signature } = defaultClassifier.classify(message, run.runId)
         errors.push({
-          signature: this.signatureOf('spawn-error', message),
+          signature,
           category: 'unknown',
           raw: message,
         })
@@ -126,39 +127,6 @@ export class OpenClawAdapter implements IExecutionAdapter {
       args.push('--policies', JSON.stringify(policies))
     }
 
-    return args
-  }
-
-  private classifyError(message: string): { signature: string; category: ErrorCategory } {
-    const lower = message.toLowerCase()
-
-    let category: ErrorCategory = 'unknown'
-    if (/permission|access denied|eacces/.test(lower)) category = 'permission'
-    else if (/network|enotfound|timeout|econnrefused/.test(lower)) category = 'network'
-    else if (/cannot find module|no such file|enoent|missing/.test(lower)) category = 'dependency'
-    else if (/timed out|deadline/.test(lower)) category = 'timeout'
-    else if (/assert|expect|invariant/.test(lower)) category = 'logic'
-
-    return {
-      signature: this.signatureOf(category, message),
-      category,
+      return args
     }
-  }
-
-  /**
-   * Generate a stable, normalised signature for an error message.
-   * Strips dynamic parts (file paths, line numbers, memory addresses).
-   */
-  private signatureOf(category: string, message: string): string {
-    const normalised = message
-      .toLowerCase()
-      .replace(/\/[^\s]+/g, '<path>')        // file paths
-      .replace(/\d+:\d+/g, '<loc>')          // line:col
-      .replace(/0x[0-9a-f]+/gi, '<addr>')    // memory addresses
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 120)
-
-    return `${category}::${normalised}`
-  }
 }

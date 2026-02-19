@@ -15,7 +15,8 @@ export * from './types/index.js'
 
 // Core modules
 export { Orchestrator } from './orchestrator/index.js'
-export { SqliteMemoryStore } from './memory/index.js'
+export { SqliteMemoryStore, ErrorClassifier, defaultClassifier, normaliseError } from './memory/index.js'
+export type { ClassifiedError, EnrichedClassification, IErrorClassifierLLM } from './memory/index.js'
 export { TelemetryCollector } from './telemetry/index.js'
 export { TorqueEngine } from './torque/index.js'
 export { Learner } from './learner/index.js'

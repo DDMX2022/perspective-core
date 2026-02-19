@@ -18,6 +18,8 @@ export interface RunContext {
   /** Persona / strategy hint passed to the orchestrator */
   persona?: string;
   timestamp: string;
+  /** ISO timestamp when the run completed (success, failed, or aborted) */
+  endedAt?: string;
   status: RunStatus;
   meta?: Record<string, unknown>;
 }

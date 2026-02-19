@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS runs (
   target    TEXT NOT NULL,
   persona   TEXT,
   timestamp TEXT NOT NULL,
+  ended_at  TEXT,
   status    TEXT NOT NULL CHECK(status IN ('pending','running','success','failed','aborted')),
   meta      TEXT
 );
