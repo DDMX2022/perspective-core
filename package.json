@@ -1,7 +1,7 @@
 {
   "name": "perspective-core",
   "version": "0.1.0",
-  "description": "A domain-agnostic self-learning agent framework. Wraps any execution engine with memory, telemetry, and cross-run policy learning.",
+  "description": "Self-learning execution layer for agents and automation. Wraps any execution engine with memory, telemetry, and cross-run policy learning.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,16 +18,31 @@
     "test": "node --experimental-vm-modules node_modules/.bin/jest --config jest.config.ts"
   },
   "keywords": [
-    "agent",
     "self-learning",
+    "execution-layer",
+    "agent-framework",
+    "automation",
     "orchestrator",
     "memory",
     "telemetry",
-    "policy",
-    "ai",
-    "openclaw"
+    "policy-learning",
+    "fix-recipes",
+    "error-recovery",
+    "ai-agent",
+    "self-healing",
+    "ci-cd",
+    "devops",
+    "llm"
   ],
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DDMX2022/perspective-core.git"
+  },
+  "homepage": "https://github.com/DDMX2022/perspective-core#readme",
+  "bugs": {
+    "url": "https://github.com/DDMX2022/perspective-core/issues"
+  },
+  "author": "DDMX2022",
   "license": "MIT",
   "dependencies": {
     "better-sqlite3": "^12.6.2",
