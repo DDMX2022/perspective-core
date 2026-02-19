@@ -75,6 +75,20 @@ export class Orchestrator implements IOrchestrator {
 
     const policyInstructions = allPolicies.map((p) => p.policyJson)
 
+    // Persist which policies + torque strategy were active for this run
+    run.meta = {
+      ...run.meta,
+      policiesApplied: allPolicies.map((p) => ({
+        policyId: p.policyId.slice(0, 8),
+        action: p.policyJson.action,
+        triggerSignature: p.triggerSignature,
+        confidence: p.confidence,
+      })),
+      torqueStrategy: torqueProfile.strategy,
+      torqueDominant: torqueProfile.dominant,
+    }
+    this.memory.saveRun(run)
+
     // ── 4. Execute ────────────────────────────────────────────────────────
     this.memory.updateRunStatus(runId, 'running')
     run.status = 'running'

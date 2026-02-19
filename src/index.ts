@@ -15,8 +15,25 @@ export * from './types/index.js'
 
 // Core modules
 export { Orchestrator } from './orchestrator/index.js'
-export { SqliteMemoryStore, ErrorClassifier, defaultClassifier, normaliseError } from './memory/index.js'
-export type { ClassifiedError, EnrichedClassification, IErrorClassifierLLM } from './memory/index.js'
+export {
+  SqliteMemoryStore,
+  ErrorClassifier,
+  defaultClassifier,
+  normaliseError,
+  OpenAIEnricher,
+  AnthropicEnricher,
+  OllamaEnricher,
+  GenericFetchEnricher,
+} from './memory/index.js'
+export type {
+  ClassifiedError,
+  EnrichedClassification,
+  IErrorClassifierLLM,
+  OpenAIEnricherOptions,
+  AnthropicEnricherOptions,
+  OllamaEnricherOptions,
+  GenericFetchEnricherOptions,
+} from './memory/index.js'
 export { TelemetryCollector } from './telemetry/index.js'
 export { TorqueEngine } from './torque/index.js'
 export { Learner } from './learner/index.js'
@@ -29,5 +46,7 @@ export { logger } from './config/logger.js'
 export { OpenClawAdapter } from './adapters/openclaw/index.js'
 export { DockerAdapter } from './adapters/docker/index.js'
 export type { DockerAdapterOptions } from './adapters/docker/index.js'
+export { BashAdapter } from './adapters/bash/index.js'
+export type { BashAdapterOptions } from './adapters/bash/index.js'
 export { MockAdapter } from './adapters/mock/index.js'
 export type { MockScenario } from './adapters/mock/index.js'

@@ -11,3 +11,15 @@ export type {
   IErrorClassifierLLM,
   ErrorClassifierOptions,
 } from './error-classifier.js'
+export {
+  OpenAIEnricher,
+  AnthropicEnricher,
+  OllamaEnricher,
+  GenericFetchEnricher,
+} from './llm-enrichers.js'
+export type {
+  OpenAIEnricherOptions,
+  AnthropicEnricherOptions,
+  OllamaEnricherOptions,
+  GenericFetchEnricherOptions,
+} from './llm-enrichers.js'

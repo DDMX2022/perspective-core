@@ -140,6 +140,14 @@ program
       const events = memory.getEvents(run.runId)
       const duration = fmtDuration(run.timestamp, run.endedAt)
 
+      // Extract meta fields stored by orchestrator
+      const meta = run.meta ?? {}
+      const policiesApplied = meta['policiesApplied'] as Array<{
+        policyId: string; action: string; triggerSignature: string; confidence: number
+      }> | undefined
+      const torqueStrategy = meta['torqueStrategy'] as string | undefined
+      const torqueDominant = meta['torqueDominant'] as string | undefined
+
       console.log(chalk.cyan('\n  Run Detail'))
       console.log(chalk.dim('  ─────────────────────────────────────────────────────'))
       console.log(`  ${fmtStatusIcon(run.status)} ${fmtStatus(run.status)}  ${chalk.dim(duration)}`)
@@ -150,6 +158,19 @@ program
       console.log(`  ${chalk.dim('Started:')}  ${new Date(run.timestamp).toLocaleString()}`)
       if (run.endedAt) {
         console.log(`  ${chalk.dim('Ended:')}    ${new Date(run.endedAt).toLocaleString()}`)
+      }
+      if (torqueStrategy) {
+        console.log(`  ${chalk.dim('Strategy:')} ${chalk.cyan(torqueStrategy)}  ${chalk.dim(`dominant: ${torqueDominant ?? '—'}`)}`)
+      }
+
+      if (policiesApplied && policiesApplied.length > 0) {
+        console.log(chalk.dim('\n  Policies active during run:'))
+        for (const p of policiesApplied) {
+          const conf = Math.round(p.confidence * 100)
+          console.log(`    ${chalk.blue('⊕')} ${chalk.bold(`[${p.action.toUpperCase()}]`)} ${p.triggerSignature}  ${chalk.dim(`${conf}% · id: ${p.policyId}`)}`)
+        }
+      } else {
+        console.log(`  ${chalk.dim('Policies:')} ${chalk.dim('none active')}`)
       }
 
       if (errors.length > 0) {
