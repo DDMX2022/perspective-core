@@ -27,3 +27,6 @@ export { logger } from './config/logger.js'
 // Built-in adapters
 export { OpenClawAdapter } from './adapters/openclaw/index.js'
 export { DockerAdapter } from './adapters/docker/index.js'
+export type { DockerAdapterOptions } from './adapters/docker/index.js'
+export { MockAdapter } from './adapters/mock/index.js'
+export type { MockScenario } from './adapters/mock/index.js'

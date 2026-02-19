@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3'
 import DatabaseConstructor from 'better-sqlite3'
 import { SCHEMA_DDL } from './schema.js'
+import { ensureFileDir } from '../config/ensure-dirs.js'
 import type {
   IMemoryStore,
   RunContext,
@@ -15,6 +16,7 @@ export class SqliteMemoryStore implements IMemoryStore {
   private db: Database.Database
 
   constructor(dbPath: string) {
+    ensureFileDir(dbPath)
     this.db = new DatabaseConstructor(dbPath)
     this.init()
   }
@@ -76,9 +78,16 @@ export class SqliteMemoryStore implements IMemoryStore {
   }
 
   getEvents(runId: string): TelemetryEvent[] {
-    return this.db
+    const rows = this.db
       .prepare(`SELECT * FROM events WHERE run_id = ? ORDER BY id ASC`)
-      .all(runId) as TelemetryEvent[]
+      .all(runId) as Record<string, unknown>[]
+    return rows.map((row) => ({
+      id: row['id'] as number,
+      runId: row['run_id'] as string,
+      type: row['type'] as TelemetryEvent['type'],
+      content: row['content'] as string,
+      timestamp: row['timestamp'] as string,
+    }))
   }
 
   // ─── Errors ──────────────────────────────────────────────────────────────
@@ -93,9 +102,16 @@ export class SqliteMemoryStore implements IMemoryStore {
   }
 
   getErrors(runId: string): ErrorSignature[] {
-    return this.db
+    const rows = this.db
       .prepare(`SELECT * FROM errors WHERE run_id = ? ORDER BY id ASC`)
-      .all(runId) as ErrorSignature[]
+      .all(runId) as Record<string, unknown>[]
+    return rows.map((row) => ({
+      id: row['id'] as number,
+      runId: row['run_id'] as string,
+      signature: row['signature'] as string,
+      category: row['category'] as ErrorSignature['category'],
+      rawMessage: row['raw_message'] as string,
+    }))
   }
 
   // ─── Fix Recipes ─────────────────────────────────────────────────────────
