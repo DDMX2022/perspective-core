@@ -118,6 +118,9 @@ export interface IMemoryStore {
   savePolicy(policy: Policy): void;
   getPolicy(triggerSignature: string): Policy | undefined;
   listPolicies(): Policy[];
+  deletePolicy(policyId: string): boolean;
+
+  deleteFixRecipe(signature: string): boolean;
 
   close(): void;
 }
@@ -136,8 +139,8 @@ export interface TorqueProfile {
 }
 
 export interface ITorqueEngine {
-  /** Analyse a goal + past run history to derive a TorqueProfile */
-  analyse(goal: string, history: RunContext[]): TorqueProfile;
+  /** Analyse a goal + past run history to derive a TorqueProfile (may be async for LLM analysis) */
+  analyse(goal: string, history: RunContext[]): TorqueProfile | Promise<TorqueProfile>;
   /** Adjust the profile based on active policies */
   applyPolicies(profile: TorqueProfile, policies: Policy[]): TorqueProfile;
 }

@@ -23,3 +23,15 @@ export type {
   OllamaEnricherOptions,
   GenericFetchEnricherOptions,
 } from './llm-enrichers.js'
+export {
+  cosineSimilarity,
+  scorePolicy,
+  scoreAllPolicies,
+  filterRelevantPolicies,
+  applyDecay,
+  getEffectiveConfidence,
+} from './policy-scoring.js'
+export type {
+  PolicyRelevanceResult,
+  PolicyScoringOptions,
+} from './policy-scoring.js'

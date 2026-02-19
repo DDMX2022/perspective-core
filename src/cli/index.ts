@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import { Command } from 'commander'
 import chalk from 'chalk'
+import { readFileSync, existsSync } from 'fs'
+import { join } from 'path'
 import { Orchestrator } from '../orchestrator/index.js'
 import { SqliteMemoryStore } from '../memory/index.js'
 import { TelemetryCollector } from '../telemetry/index.js'
 import { TorqueEngine } from '../torque/index.js'
 import { Learner } from '../learner/index.js'
-import { OpenClawAdapter } from '../adapters/index.js'
+import { OpenClawAdapter, BashAdapter, HttpAdapter, adapterRegistry } from '../adapters/index.js'
 import { config } from '../config/index.js'
 
 const program = new Command()
@@ -45,9 +47,69 @@ function fmtStatusIcon(status: string): string {
   }
 }
 
+// ── Spinner ──────────────────────────────────────────────────────────────────
+
+const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+
+class Spinner {
+  private frame = 0
+  private timer?: ReturnType<typeof setInterval>
+  private message: string
+
+  constructor(message: string) {
+    this.message = message
+  }
+
+  start(): void {
+    this.timer = setInterval(() => {
+      const icon = chalk.cyan(SPINNER_FRAMES[this.frame % SPINNER_FRAMES.length])
+      process.stderr.write(`\r  ${icon} ${this.message}`)
+      this.frame++
+    }, 80)
+  }
+
+  update(message: string): void {
+    this.message = message
+  }
+
+  stop(finalMessage?: string): void {
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = undefined
+    }
+    process.stderr.write('\r' + ' '.repeat(this.message.length + 10) + '\r')
+    if (finalMessage) {
+      console.log(`  ${finalMessage}`)
+    }
+  }
+}
+
+// ── Adapter resolver ────────────────────────────────────────────────────────
+
+function resolveAdapter(name: string) {
+  // Register built-in adapters lazily
+  if (!adapterRegistry.has('openclaw')) {
+    adapterRegistry.register('openclaw', new OpenClawAdapter())
+  }
+  if (!adapterRegistry.has('bash')) {
+    adapterRegistry.register('bash', new BashAdapter({ command: 'echo "No command specified"' }))
+  }
+  if (!adapterRegistry.has('http')) {
+    adapterRegistry.register('http', new HttpAdapter({ url: 'http://localhost:3000' }))
+  }
+
+  const adapter = adapterRegistry.get(name)
+  if (!adapter) {
+    console.error(chalk.red(`  Unknown adapter: "${name}"`))
+    console.error(chalk.dim(`  Available adapters: ${adapterRegistry.list().join(', ')}`))
+    process.exit(1)
+  }
+  return adapter
+}
+
 // ─── slc run ─────────────────────────────────────────────────────────────────
 
-interface RunOpts { goal: string; target: string; persona?: string; adapter: string }
+interface RunOpts { goal: string; target: string; persona?: string; adapter: string; watch?: boolean }
 interface HistoryOpts { limit: string; id?: string; json?: boolean }
 
 program
@@ -56,14 +118,33 @@ program
   .requiredOption('--goal <goal>', 'Natural language goal for this run')
   .requiredOption('--target <target>', 'Domain-specific target (repo path, URL, etc.)')
   .option('--persona <persona>', 'Optional persona / strategy hint')
-  .option('--adapter <adapter>', 'Adapter to use', 'openclaw')
+  .option('--adapter <adapter>', 'Adapter to use (openclaw, bash, http, or custom)', 'openclaw')
+  .option('--watch', 'Stream live telemetry to terminal during execution')
   .action(async (_opts, cmd: Command) => {
     const opts = cmd.opts<RunOpts>()
     const memory = new SqliteMemoryStore(config.DB_PATH)
     const telemetry = new TelemetryCollector().withMemory(memory)
 
+    // ── Live telemetry streaming (--watch) ──────────────────────────────
+    if (opts.watch) {
+      const origCapture = telemetry.capture.bind(telemetry)
+      telemetry.capture = (event) => {
+        origCapture(event)
+        const icon = event.type === 'error'
+          ? chalk.red('✗')
+          : event.type === 'recovery'
+            ? chalk.yellow('⟳')
+            : event.type === 'policy_applied'
+              ? chalk.blue('⊕')
+              : chalk.dim('·')
+        console.log(`  ${icon} ${chalk.dim(`[${event.type}]`)} ${event.content.slice(0, 120)}`)
+      }
+    }
+
+    const adapter = resolveAdapter(opts.adapter)
+
     const orchestrator = new Orchestrator({
-      adapter: new OpenClawAdapter(),
+      adapter,
       memory,
       telemetry,
       torque: new TorqueEngine(),
@@ -72,16 +153,33 @@ program
 
     console.log(chalk.cyan('\n  perspective-core'))
     console.log(chalk.dim('  ─────────────────────────────'))
-    console.log(`  ${chalk.bold('Goal:')}   ${opts.goal}`)
-    console.log(`  ${chalk.bold('Target:')} ${opts.target}`)
+    console.log(`  ${chalk.bold('Goal:')}    ${opts.goal}`)
+    console.log(`  ${chalk.bold('Target:')}  ${opts.target}`)
+    console.log(`  ${chalk.bold('Adapter:')} ${chalk.cyan(opts.adapter)}`)
     if (opts.persona) console.log(`  ${chalk.bold('Persona:')} ${opts.persona}`)
     console.log(chalk.dim('  ─────────────────────────────\n'))
 
+    // ── Progress spinner ────────────────────────────────────────────────
+    const spinner = opts.watch ? null : new Spinner('Executing...')
+    spinner?.start()
+
     const run = await orchestrator.run(opts.goal, opts.target, opts.persona)
+
+    spinner?.stop()
 
     // Re-read from DB so we get endedAt + real duration
     const stored = memory.getRun(run.runId)
     const duration = stored ? fmtDuration(stored.timestamp, stored.endedAt) : '—'
+
+    // Torque strategy from meta
+    const meta = run.meta ?? {}
+    const torqueStrategy = meta['torqueStrategy'] as string | undefined
+    const torqueDominant = meta['torqueDominant'] as string | undefined
+
+    // Show torque strategy during execution output
+    if (torqueStrategy) {
+      console.log(`  ${chalk.dim('Strategy:')} ${chalk.cyan(torqueStrategy)} ${chalk.dim(`(${torqueDominant ?? '—'})`)}`)
+    }
 
     // Show policy/recipe counts
     const errors = memory.getErrors(run.runId)
@@ -327,5 +425,152 @@ program
     memory.close()
   })
 
-program.parse()
+// ─── slc policies delete ────────────────────────────────────────────────────
 
+program
+  .command('policies-delete <id>')
+  .alias('pd')
+  .description('Delete a policy by ID (prefix or full)')
+  .action((id: string) => {
+    const memory = new SqliteMemoryStore(config.DB_PATH)
+    const policies = memory.listPolicies()
+    const policy = policies.find((p) => p.policyId.startsWith(id))
+
+    if (!policy) {
+      console.error(chalk.red(`  No policy found with ID starting with "${id}"`))
+      memory.close()
+      process.exit(1)
+    }
+
+    const deleted = memory.deletePolicy(policy.policyId)
+    if (deleted) {
+      console.log(chalk.green(`  ✓ Deleted policy ${policy.policyId.slice(0, 8)} (${policy.triggerSignature})`))
+    } else {
+      console.error(chalk.red(`  Failed to delete policy`))
+    }
+    memory.close()
+  })
+
+// ─── slc recipes delete ─────────────────────────────────────────────────────
+
+program
+  .command('recipes-delete <signature>')
+  .alias('rd')
+  .description('Delete a fix recipe by its error signature (prefix or full)')
+  .action((sig: string) => {
+    const memory = new SqliteMemoryStore(config.DB_PATH)
+    const recipes = memory.listFixRecipes()
+    const recipe = recipes.find((r) => r.signature.startsWith(sig) || r.signature.includes(sig))
+
+    if (!recipe) {
+      console.error(chalk.red(`  No recipe found matching "${sig}"`))
+      memory.close()
+      process.exit(1)
+    }
+
+    const deleted = memory.deleteFixRecipe(recipe.signature)
+    if (deleted) {
+      console.log(chalk.green(`  ✓ Deleted recipe: ${recipe.signature}`))
+    } else {
+      console.error(chalk.red(`  Failed to delete recipe`))
+    }
+    memory.close()
+  })
+
+// ─── slc handoff ─────────────────────────────────────────────────────────────
+
+program
+  .command('handoff [runId]')
+  .description('Print the handoff.md file for a run')
+  .action((runId?: string) => {
+    const memory = new SqliteMemoryStore(config.DB_PATH)
+
+    // If no runId, use the most recent run
+    let resolvedId: string
+    if (runId) {
+      const allRuns = memory.listRuns(1000)
+      const match = allRuns.find((r) => r.runId.startsWith(runId))
+      if (!match) {
+        console.error(chalk.red(`  No run found with ID starting with "${runId}"`))
+        memory.close()
+        process.exit(1)
+      }
+      resolvedId = match.runId
+    } else {
+      const latest = memory.listRuns(1)
+      if (latest.length === 0) {
+        console.error(chalk.red('  No runs found. Use `slc run` to start one.'))
+        memory.close()
+        process.exit(1)
+      }
+      resolvedId = latest[0]!.runId
+    }
+
+    const handoffPath = join(config.RUNS_DIR, resolvedId, 'handoff.md')
+
+    if (!existsSync(handoffPath)) {
+      console.error(chalk.red(`  Handoff file not found: ${handoffPath}`))
+      memory.close()
+      process.exit(1)
+    }
+
+    const content = readFileSync(handoffPath, 'utf8')
+    console.log(content)
+    memory.close()
+  })
+
+// ─── slc export ──────────────────────────────────────────────────────────────
+
+program
+  .command('export')
+  .description('Export memory store data to JSON or NDJSON')
+  .option('--format <format>', 'Output format: json or ndjson', 'json')
+  .option('--runs', 'Export runs')
+  .option('--recipes', 'Export fix recipes')
+  .option('--policies', 'Export policies')
+  .option('--all', 'Export everything (default if no flags given)')
+  .action((_opts, cmd: Command) => {
+    const opts = cmd.opts<{ format: string; runs?: boolean; recipes?: boolean; policies?: boolean; all?: boolean }>()
+    const memory = new SqliteMemoryStore(config.DB_PATH)
+
+    const exportAll = opts.all || (!opts.runs && !opts.recipes && !opts.policies)
+    const format = opts.format === 'ndjson' ? 'ndjson' : 'json'
+
+    const data: Record<string, unknown> = {}
+
+    if (exportAll || opts.runs) {
+      const runs = memory.listRuns(10000)
+      const enrichedRuns = runs.map((r) => ({
+        ...r,
+        events: memory.getEvents(r.runId),
+        errors: memory.getErrors(r.runId),
+      }))
+      data['runs'] = enrichedRuns
+    }
+
+    if (exportAll || opts.recipes) {
+      data['recipes'] = memory.listFixRecipes()
+    }
+
+    if (exportAll || opts.policies) {
+      data['policies'] = memory.listPolicies()
+    }
+
+    if (format === 'ndjson') {
+      for (const [type, items] of Object.entries(data)) {
+        if (Array.isArray(items)) {
+          for (const item of items) {
+            console.log(JSON.stringify({ _type: type, ...item as object }))
+          }
+        } else {
+          console.log(JSON.stringify({ _type: type, ...items as object }))
+        }
+      }
+    } else {
+      console.log(JSON.stringify(data, null, 2))
+    }
+
+    memory.close()
+  })
+
+program.parse()

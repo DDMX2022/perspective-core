@@ -69,7 +69,7 @@ export class Orchestrator implements IOrchestrator {
 
     // ── 3. Torque analysis ────────────────────────────────────────────────
     const history = this.memory.listRuns(20)
-    let torqueProfile = this.torque.analyse(goal, history)
+    let torqueProfile = await this.torque.analyse(goal, history)
     torqueProfile = this.torque.applyPolicies(torqueProfile, allPolicies)
     logger.info(`[${runId}] Torque: ${torqueProfile.strategy} (dominant: ${torqueProfile.dominant})`)
 

@@ -186,6 +186,20 @@ export class SqliteMemoryStore implements IMemoryStore {
     return rows.map(this.mapPolicy)
   }
 
+  deletePolicy(policyId: string): boolean {
+    const result = this.db
+      .prepare(`DELETE FROM policies WHERE policy_id = ?`)
+      .run(policyId)
+    return result.changes > 0
+  }
+
+  deleteFixRecipe(signature: string): boolean {
+    const result = this.db
+      .prepare(`DELETE FROM fix_recipes WHERE signature = ?`)
+      .run(signature)
+    return result.changes > 0
+  }
+
   // ─── Cleanup ─────────────────────────────────────────────────────────────
 
   close(): void {
