@@ -46,6 +46,37 @@ export { TelemetryCollector } from './telemetry/index.js'
 export { TorqueEngine } from './torque/index.js'
 export type { IGoalAnalyserLLM, TorqueEngineOptions } from './torque/index.js'
 export { Learner } from './learner/index.js'
+export {
+  getDefaultPlanetAgents,
+  activatePlanets,
+  extractCrux,
+  getDefaultPlanetInteractions,
+  getRelevantInteractions,
+  getDominantInteraction,
+  scoreInteraction,
+  interactionKey,
+  MockLLMAdapter,
+  buildPersonalityPrompt,
+  buildMemoryCandidates,
+  reflectOnInteraction,
+  analyzePersonality,
+} from './planetary-persona-engine/index.js'
+export type {
+  ActivationResult,
+  CruxResult,
+  InteractionType,
+  LLMAdapter,
+  MemoryCandidate,
+  PersonalityAnalysisInput,
+  PersonalityAnalysisResult,
+  PersonalityInternalState,
+  PersonalityPromptState,
+  PlanetActivation,
+  PlanetAgent,
+  PlanetInteraction,
+  PlanetName,
+  ReflectionResult,
+} from './planetary-persona-engine/index.js'
 
 // Config
 export { config, loadConfig } from './config/index.js'

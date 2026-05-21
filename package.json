@@ -15,6 +15,7 @@
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
     "test:e2e": "tsx scripts/e2e-learning-loop.ts",
+    "debug:persona": "tsx scripts/planetary-persona-debug.ts",
     "test": "node --experimental-vm-modules node_modules/.bin/jest --config jest.config.ts"
   },
   "keywords": [

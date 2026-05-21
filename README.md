@@ -9,10 +9,10 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
-[![Tests](https://img.shields.io/badge/tests-66%20passing-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-75%20passing-brightgreen.svg)](#testing)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-[Quick Start](#quick-start) · [How It Works](#how-it-works) · [Use Cases](#use-cases) · [Build an Adapter](#build-an-adapter) · [Architecture](ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md)
+[Quick Start](#quick-start) · [How It Works](#how-it-works) · [Use Cases](#use-cases) · [Persona Engine](#planetary-persona-engine-v2) · [Build an Adapter](#build-an-adapter) · [Architecture](ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -266,6 +266,54 @@ The dominant dimension is passed to the adapter, so it can adjust behavior per r
 
 ---
 
+## Planetary Persona Engine v2
+
+The **Planetary Persona Engine v2** is an experimental symbolic personality module that sits beside the existing learning, memory, torque, and adapter architecture. It is designed as a **simulated reflective self-model** and **reflective agent layer**, not an astrology chatbot and not a claim of real consciousness.
+
+The first vertical slice includes:
+
+- Seven default symbolic planet agents: Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn
+- Deterministic planet activation from user input
+- Planet interaction graph with dominant interaction scoring
+- Crux Engine v1 for root-tension extraction
+- LLM prompt orchestration behind a mockable `LLMAdapter`
+- In-memory memory candidates
+- Structured self-reflection output
+- Local debug UI for testing the full pipeline
+
+Example:
+
+```typescript
+import { analyzePersonality } from 'perspective-core'
+
+const result = await analyzePersonality({
+  text: 'I want to start my business but I am scared.',
+})
+
+console.log(result.crux.realCrux)
+// expansion versus safety
+```
+
+Run the local debug UI:
+
+```bash
+npm run debug:persona
+```
+
+Then open the printed URL, usually:
+
+```txt
+http://127.0.0.1:4321
+```
+
+The debug UI shows the generated response, active planets, dominant interaction, crux, reflection, memory candidates, and raw JSON output.
+
+Safety framing: the module must describe itself as a symbolic personality engine or simulated reflective self-model. It must not claim the AI is conscious, has real feelings, or has real subjective experience.
+
+Full docs: [`docs/planetary-persona-engine-v2.md`](docs/planetary-persona-engine-v2.md)
+
+---
+
 ## Architecture
 
 ```
@@ -294,6 +342,7 @@ The dominant dimension is passed to the adapter, so it can adjust behavior per r
 | **Telemetry** | `src/telemetry/` | Structured event capture, buffering, flush |
 | **Learner** | `src/learner/` | Fix recipe extraction, policy promotion (Wilson score) |
 | **Torque** | `src/torque/` | Goal analysis, dimension weighting, strategy selection |
+| **Planetary Persona Engine** | `src/planetary-persona-engine/` | Symbolic reflective layer: activation, interactions, crux, prompt orchestration, memory candidates |
 | **Adapters** | `src/adapters/` | Execution engine integrations |
 | **CLI** | `src/cli/` | `slc` command-line interface |
 | **Types** | `src/types/` | All shared interfaces and contracts |
@@ -329,6 +378,7 @@ The framework is **LLM-optional**. Every intelligence seam has a deterministic f
 | Error classification | Regex pattern matching | `IErrorClassifierLLM` — richer categorisation |
 | Error enrichment | Raw message only | OpenAI / Anthropic / Ollama enrichers |
 | Torque analysis | Keyword heuristics | `IGoalAnalyserLLM` — semantic goal understanding |
+| Persona response | Mock reflective response | `LLMAdapter` — voice layer over structured persona state |
 | Recipe extraction | Event-type matching | LLM reads raw logs → better fix steps |
 | Policy descriptions | Template strings | LLM writes human-readable policy text |
 
@@ -337,11 +387,14 @@ The framework is **LLM-optional**. Every intelligence seam has a deterministic f
 ## Testing
 
 ```bash
-# Unit tests (66 passing)
+# Unit tests (75 passing)
 npm test
 
 # End-to-end learning loop
 npm run test:e2e
+
+# Planetary Persona Engine debug UI
+npm run debug:persona
 
 # Type checking
 npm run typecheck
